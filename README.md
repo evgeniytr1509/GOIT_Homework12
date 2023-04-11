@@ -1,1 +1,0 @@
-# GOIT_Homework12
