@@ -1,6 +1,7 @@
 from datetime import datetime
 from collections import UserDict
 import re
+import os
 import pickle
 import json
 
@@ -93,9 +94,9 @@ class Record:
         return "The contact does not have a birthday"
 
 class AddressBook(UserDict):
-    def __init__(self):
-        super().__init__()
-        self.data = {}
+    # def __init__(self):
+    #     super().__init__()
+    #     self.data = {}
 
     def add_record(self, record):
         self.data[record.name.value] = record
@@ -118,14 +119,18 @@ class AddressBook(UserDict):
     def save_to_disk(self, filename):
         with open(filename, 'wb') as file:
             pickle.dump(self.data, file)
-        print('Address book saved successfully!')
+        return 'Address book saved successfully!'
 
 
     def load_from_disk(self, filename):
-        with open(filename, 'rb') as file:
-            self.data = pickle.load(file)
-        print('Address book loaded successfully!')
+        if os.path.exists(filename):
+            with open(filename, 'rb') as file:
+                self.data = pickle.load(file)
+            return 'Address book loaded successfully!'
+        return 'No file with contacts. Use empty.'
+        
 ##############################################
+
 address_book = AddressBook()# create global variable
 
 
@@ -135,6 +140,8 @@ def input_error(func):
             return func(*args, **kwargs)
         except KeyError:
             return "Name not found in contacts"
+        except ValueError as e:
+            return e
     return inner
 
 def hello():
@@ -147,25 +154,25 @@ def hello():
         - To exit the program input <<<exit>>> or <<<bye>>>""")
 
 @input_error
-def add_contact(name, phone, mail=None, birthday=None):
-    name_field = Name(name)
-    phone_field = Phone(phone)
-    mail_field = Mail(mail) if mail else None
-    birthday_field = Birthday(birthday) if birthday else None
+def add_contact(*args):
+    name_field = Name(args[0])
+    phone_field = Phone(args[1])
+    mail_field = Mail(args[2]) if len(args) > 2 else None
+    birthday_field = Birthday(args[3]) if len(args) > 3 else None
     rec:Record = address_book.get(name_field.value)
     
     if rec:
         
         rec.add_phone(phone_field)
         if mail_field:
-            rec.set_mail(mail)
+            rec.set_mail(mail_field)
         if birthday_field:
             rec.birthday = birthday_field
     
     else:
         rec = Record(name_field, phone_field, mail_field, birthday_field)
         address_book.add_record(rec)
-        return f"Contact {name} with phone number {phone} added successfully"
+        return f"Contact {name_field} with phone number {phone_field} added successfully"
     
     return address_book
 
@@ -265,7 +272,7 @@ def parse_command(command, filename = None):
             except IndexError:
                 return "Command to add contact is empty, please repeat with name and number"
         else:
-            return add_contact(parts[1], parts[2], parts[3], parts[4])
+            return add_contact(*parts[1:])
     
     elif parts[0] == "find":
         if len(parts) < 1:
@@ -292,17 +299,17 @@ def parse_command(command, filename = None):
     
     elif parts[0] == "save":
         if filename is None: # имя по умолчанию
-            filename = "data.xml"
-        with open(filename, "wb") as f:
-            pickle.dump(data, f)
-            print("Data saved successfully to", filename)
+            filename = "data.bin"
+        address_book.save_to_disk(filename)
+        print("Data saved successfully to", filename)
     
     elif parts[0] == "load":
         if filename is None:
-            filename = "data.xml"
-        with open(filename, "rb") as f:
-            data = pickle.load(f)
-            print("Data loaded successfully from", filename)
+            filename = "data.bin"
+        address_book.load_from_disk(filename)
+        # with open(filename, "rb") as f:
+        #     data = pickle.load(f)
+        print("Data loaded successfully from", filename)
     else:
         return "Invalid command"
 ############################
